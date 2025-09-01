@@ -215,48 +215,6 @@ jobs:
           TAG_NAME: ${{ steps.tag-release.outputs.tag || steps.existing-tag-output.outputs.tag }}
           TAG_SHA: ${{ steps.tag-release.outputs.sha || steps.existing-tag-output.outputs.sha }}
         run: |
-          # Function to escape markdown special characters
-          # Note: Backslash must be escaped first to avoid interfering with other escapes
-          escape_markdown() {
-            printf '%s' "$1" | sed 's/\\/\\\\/g; s/[\[\](){}*_`~#<>|]/\\&/g'
-          }
-
-          # Function to generate PR body content
-          generate_pr_body() {
-            local escaped_tag="$1"
-            local escaped_branch="$2"
-            local tag_sha="$3"
-            local escaped_target="$4"
-
-            # Build PR body without heredoc to avoid delimiter indentation issues
-            local body=""
-            body+="## Release Information\n\n"
-            body+="- **Version**: \`${escaped_tag}\`\n"
-            body+="- **Release Branch**: \`${escaped_branch}\`\n"
-            body+="- **Tag SHA**: \`${tag_sha}\`\n"
-            body+="- **Target Branch**: \`${escaped_target}\`\n\n"
-            body+="## Release Status\n\n"
-            body+="This release has been **tagged** at commit ${tag_sha:0:7}.\n\n"
-            body+="The tag \`${escaped_tag}\` has been created on the release branch HEAD.\n\n"
-            body+="## Merge Instructions\n\n"
-            body+="**REQUIRED**: This PR must be merged using a **merge commit** (NOT squash and merge).\n\n"
-            body+="**IMPORTANT**: The release has already been tagged. DO NOT create another tag after merge.\n\n"
-            body+="After merging:\n"
-            body+="1. The tagged commit will be part of ${escaped_target} history\n"
-            body+="2. The publish-release workflow will trigger\n"
-            body+="3. GitHub release will be created from the existing tagged commit\n"
-            body+="4. Sentry artifacts will be uploaded\n\n"
-            body+="## Checklist\n\n"
-            body+="- [x] Release branch created\n"
-            body+="- [x] Version bumped\n"
-            body+="- [x] Changelog updated\n"
-            body+="- [x] QA testing completed\n"
-            body+="- [x] **Release tagged at branch HEAD**\n"
-            body+="- [ ] Ready to merge to ${escaped_target}\n"
-
-            printf '%s' "${body}"
-          }
-
           # Check if PR already exists
           EXISTING_PR=$(gh pr list --base "${TARGET_BRANCH}" --head "${RELEASE_BRANCH}" --json number --jq '.[0].number' || echo "")
 
@@ -265,28 +223,10 @@ jobs:
 
             # Add label to indicate it's been tagged
             gh pr edit "${EXISTING_PR}" --add-label "release-tagged" || true
-
-            # Escape variables for markdown safety using the function
-            ESCAPED_TAG_NAME=$(escape_markdown "${TAG_NAME}")
-            ESCAPED_BRANCH=$(escape_markdown "${RELEASE_BRANCH}")
-            ESCAPED_TARGET=$(escape_markdown "${TARGET_BRANCH}")
-
-            # Update the PR description to note that it's been tagged
-            PR_BODY=$(generate_pr_body "${ESCAPED_TAG_NAME}" "${ESCAPED_BRANCH}" "${TAG_SHA}" "${ESCAPED_TARGET}")
-            gh pr edit "${EXISTING_PR}" --body "${PR_BODY}"
-
-            echo "Updated PR #${EXISTING_PR} with tag information"
           else
-            # Escape variables for markdown safety using the function
-            ESCAPED_TAG_NAME=$(escape_markdown "${TAG_NAME}")
-            ESCAPED_BRANCH=$(escape_markdown "${RELEASE_BRANCH}")
-            ESCAPED_TARGET=$(escape_markdown "${TARGET_BRANCH}")
-
             # Create new PR with label indicating it's been tagged
-            PR_BODY=$(generate_pr_body "${ESCAPED_TAG_NAME}" "${ESCAPED_BRANCH}" "${TAG_SHA}" "${ESCAPED_TARGET}")
             PR_URL=$(gh pr create \
               --title "Release: v${VERSION} to ${TARGET_BRANCH}" \
-              --body "${PR_BODY}" \
               --base "${TARGET_BRANCH}" \
               --head "${RELEASE_BRANCH}" \
               --label "release-${VERSION}" \
@@ -296,38 +236,3 @@ jobs:
             echo "Created PR #${PR_NUMBER} with release-tagged label"
           fi
 
-      - name: Output summary
-        env:
-          VERSION: ${{ inputs.release-version }}
-          RELEASE_BRANCH: ${{ steps.determine-branch.outputs.branch }}
-          TARGET_BRANCH: ${{ inputs.target-branch }}
-          TAG_NAME: ${{ steps.tag-release.outputs.tag || steps.existing-tag-output.outputs.tag }}
-          TAG_SHA: ${{ steps.tag-release.outputs.sha || steps.existing-tag-output.outputs.sha }}
-          FORCE_RETAG: ${{ inputs.force-retag }}
-        run: |
-          {
-            echo "## Release Summary"
-            echo ""
-            echo "### Release Details"
-            echo "- **Version**: ${TAG_NAME}"
-            echo "- **Release Branch**: ${RELEASE_BRANCH}"
-            echo "- **Target Branch**: ${TARGET_BRANCH}"
-            echo "- **Tag SHA**: \`${TAG_SHA}\`"
-
-            if [[ "${FORCE_RETAG}" == "true" ]]; then
-              echo "- **Action**: Tag was moved to new HEAD"
-            fi
-
-            echo ""
-            echo "### Completed Actions"
-            echo "1. Tagged release branch HEAD with ${TAG_NAME}"
-            echo "2. Created/updated PR to merge ${RELEASE_BRANCH} → ${TARGET_BRANCH}"
-            echo ""
-            echo "### Next Steps"
-            echo "1. Review and approve the merge PR"
-            echo "2. **Merge using a merge commit** (NOT squash and merge)"
-            echo "3. The publish-release workflow will automatically:"
-            echo "   - Create GitHub release from the tagged commit"
-            echo "   - Upload artifacts to Sentry"
-            echo "   - Complete post-release tasks"
-          } >> "${GITHUB_STEP_SUMMARY}"
