@@ -227,6 +227,7 @@ jobs:
             # Create new PR with label indicating it's been tagged
             PR_URL=$(gh pr create \
               --title "Release: v${VERSION} to ${TARGET_BRANCH}" \
+              --body "" \
               --base "${TARGET_BRANCH}" \
               --head "${RELEASE_BRANCH}" \
               --label "release-${VERSION}" \
