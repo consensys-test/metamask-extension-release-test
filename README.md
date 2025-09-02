@@ -1,4 +1,4 @@
-# MetaMask Browser Extension Fork Test Realease
+# MetaMask Browser Extension Fork Test Release
 
 You can find the latest version of MetaMask on [our official website](https://metamask.io/). For help using MetaMask, visit our [User Support Site](https://support.metamask.io/).
 
