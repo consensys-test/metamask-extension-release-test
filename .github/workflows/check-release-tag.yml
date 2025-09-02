@@ -79,3 +79,9 @@ jobs:
               echo "- target-branch: ${{ github.base_ref }}"
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
+
+      - name: Fail if not tagged
+        if: steps.check-tag.outputs.tagged != 'true'
+        run: |
+          echo "::error::Release tag missing at PR HEAD. Run Tag Release Branch and re-run checks."
+          exit 1
