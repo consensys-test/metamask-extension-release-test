@@ -4,17 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release-branch:
-        description: 'Release branch including version (e.g., Version-v12.0.0 or release/12.0.0)'
+        description: 'Release branch including version (e.g., Version-v12.0.0)'
         required: true
         type: string
-      target-branch:
-        description: 'Target branch of the merge PR (master or stable)'
-        required: true
-        type: choice
-        options:
-          - master
-          - stable
-        default: master
       force-retag:
         description: 'Force re-tag if tag already exists (only if no GitHub release)'
         required: false
@@ -23,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   statuses: write
 
 jobs:
@@ -139,7 +130,7 @@ jobs:
               echo "Old tag deleted. Will create new tag at HEAD."
             else
               echo "::error::Tag ${TAG_NAME} exists but not at HEAD."
-              echo "::error::To move the tag, run this workflow again with 'Force re-tag' enabled."
+              echo "::error::To move the tag, run this workflow again with 'force-retag' enabled."
               # Log full details only to GitHub logs, not to error output
               echo "Debug: Tag is at ${TAG_SHA:0:7}, HEAD is at ${HEAD_SHA:0:7}" >&2
               exit 1
