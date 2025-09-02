@@ -64,56 +64,6 @@ jobs:
               || echo "::notice::Skipping status update (insufficient permissions)"
           fi
 
-      - name: Comment on PR if not tagged
-        if: steps.check-tag.outputs.tagged != 'true'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const branch = '${{ github.head_ref }}';
-            const workflowUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/workflows/tag-release-branch.yml`;
-            const comment = `## Release Tag Required
-
-            This release PR is not tagged at its HEAD commit.
-
-            **Before merging this PR:**
-            1. Run the **[Tag Release Branch](${workflowUrl})** workflow
-            2. Inputs:
-               - release-branch: \`${branch}\`
-               - target-branch: \`${{ github.base_ref }}\`
-
-            This will:
-            - Create the release tag at the current HEAD of the release branch
-            - Set the \`release/tagged\` status on that commit
-
-            **Why this is important:**
-            - Ensures the release tag points to the exact code that was tested
-            - Aligns with MetaMask Mobile's release process
-            - Prevents confusion between merge commits and release commits
-
-            Once tagged, this check will automatically pass`;
-
-            // Check if we already commented
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('Release Tag Required')
-            );
-
-            if (!botComment) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-            }
-
       - name: Summary
         run: |
           if [[ "${{ steps.check-tag.outputs.tagged }}" == "true" ]]; then
