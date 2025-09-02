@@ -18,6 +18,10 @@ jobs:
     # Only run on PRs targeting master or stable
     if: github.base_ref == 'master' || github.base_ref == 'stable'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
     steps:
       - name: Check 'release/tagged' status on PR HEAD
         id: check-tag
@@ -42,7 +46,8 @@ jobs:
               -f state='success' \
               -f target_url='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' \
               -f description='Release is properly tagged' \
-              -f context='release/tag-check'
+              -f context='release/tag-check' \
+              || echo "::notice::Skipping status update (insufficient permissions)"
           else
             echo "::warning::No successful 'release/tagged' status found on PR HEAD"
             echo "tagged=false" >> "${GITHUB_OUTPUT}"
@@ -55,7 +60,8 @@ jobs:
               -f state='pending' \
               -f target_url='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' \
               -f description='Tag missing on PR HEAD - run Tag Release Branch workflow' \
-              -f context='release/tag-check'
+              -f context='release/tag-check' \
+              || echo "::notice::Skipping status update (insufficient permissions)"
           fi
 
       - name: Comment on PR if not tagged
