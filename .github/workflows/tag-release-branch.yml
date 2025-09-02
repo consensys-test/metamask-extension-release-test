@@ -215,14 +215,28 @@ jobs:
           TAG_NAME: ${{ steps.tag-release.outputs.tag || steps.existing-tag-output.outputs.tag }}
           TAG_SHA: ${{ steps.tag-release.outputs.sha || steps.existing-tag-output.outputs.sha }}
         run: |
+          # Ensure the 'release-tagged' label exists in the repository
+          gh label create "release-tagged" \
+            --color "0E8A16" \
+            --description "Indicates the release branch has been tagged at HEAD" \
+            2>/dev/null || true
+
+          # Ensure the version-specific label exists, e.g., release-14.0.0
+          gh label create "release-${VERSION}" \
+            --color "0052CC" \
+            --description "Release version ${VERSION}" \
+            2>/dev/null || true
+
           # Check if PR already exists
           EXISTING_PR=$(gh pr list --base "${TARGET_BRANCH}" --head "${RELEASE_BRANCH}" --json number --jq '.[0].number' || echo "")
 
           if [[ -n "${EXISTING_PR}" ]]; then
             echo "PR already exists: #${EXISTING_PR}"
 
-            # Add label to indicate it's been tagged
-            gh pr edit "${EXISTING_PR}" --add-label "release-tagged" || true
+            # Add labels to indicate it's been tagged and the release version
+            gh pr edit "${EXISTING_PR}" \
+              --add-label "release-tagged" \
+              --add-label "release-${VERSION}" || true
           else
             # Create new PR with label indicating it's been tagged
             PR_URL=$(gh pr create \
